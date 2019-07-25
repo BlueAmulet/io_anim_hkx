@@ -155,6 +155,9 @@ def import_hkaAnimation(anim, skeleton, use_anim=False):
         arm_ob.animation_data.action = action
 
         npose = len(anim.pose)
+        scene.frame_start = 1
+        scene.frame_end = npose
+        scene.render.fps = 30
         print("#pose: {0}".format(npose))
 
         time = np.zeros(npose, dtype=np.float32)
@@ -163,7 +166,7 @@ def import_hkaAnimation(anim, skeleton, use_anim=False):
 
         for i in range(npose):
             pose = anim.pose[i]
-            time[i] = 1.0 + pose.time * 30.0
+            time[i] = 1.0 + i # Align properly to timeline
 
         bpy.ops.object.mode_set(mode="POSE")
 
