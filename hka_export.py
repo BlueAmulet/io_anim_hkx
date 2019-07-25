@@ -12,7 +12,7 @@ from io_anim_hkx.io.hka import hkaSkeleton, hkaAnimation, hkaPose, Transform
 from io_anim_hkx.naming import get_bone_name_for_blender
 
 
-def export_hkaAnimation(anim, skeleton):
+def export_hkaAnimation(anim, skeleton, use_anim=False):
 
     #
     # create bone map
@@ -75,17 +75,59 @@ def export_hkaAnimation(anim, skeleton):
             t.rotation = rotation
             t.scale = scale.z
 
-    export_pose()
-    # export_motion()
+    def export_motion():
+        scene = bpy.context.scene
+        arm_ob = detect_armature()
+        arm_ob.select = True
+
+        anim.numOriginalFrames = scene.frame_end - scene.frame_start + 1
+        anim.duration = anim.numOriginalFrames / 30.0
+
+        del anim.pose[:]
+        for f in range(scene.frame_start, scene.frame_end+1):
+            scene.frame_set(f)
+            pose = hkaPose()
+            anim.pose.append(pose)
+
+            pose.time = (f - scene.frame_start) / 30.0
+
+            for bone in skeleton.bones:
+                t = bone.local.copy()
+                pose.transforms.append(t)
+
+            for p_bone in arm_ob.pose.bones:
+                # bone mapに含まれないnameは無視する
+                if p_bone.name not in bone_indices:
+                    continue
+                bone_i = bone_indices[p_bone.name]
+
+                bone = p_bone.bone  # rest bone
+
+                if bone.parent:
+                    m = bone.parent.matrix_local.inverted() * bone.matrix_local * p_bone.matrix_basis
+                else:
+                    m = bone.matrix_local * p_bone.matrix_basis
+
+                location, rotation, scale = m.decompose()
+
+                t = pose.transforms[bone_i]
+                t.translation = location
+                t.rotation = rotation
+                t.scale = scale.z
+
+    if use_anim:
+        export_motion()
+    else:
+        export_pose()
 
 
-def export_hkafile(skeleton_file, anim_file):
+def export_hkafile(skeleton_file, anim_file, use_anim=False):
 
     skeleton = hkaSkeleton()
     skeleton.load(skeleton_file)
 
     anim = hkaAnimation()
-    export_hkaAnimation(anim, skeleton)
+    export_hkaAnimation(anim, skeleton, use_anim)
 
     anim.save(anim_file)
 
